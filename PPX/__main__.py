@@ -1,10 +1,11 @@
 import os
 import os.path as path
 import sys
-from .utils import *
 import json
+from .utils import *
+from .internationalization import i18n
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 def main():
     check_storage()
@@ -15,12 +16,12 @@ def main():
     if args[0] == "add":
         verify_consecutive_options(args)
         if len(args) == 1:
-            error("You must provide a directory/template")
+            error(i18n("no_dir_temp"))
             sys.exit(1)
         if args[1] != ".":
             _list = os.listdir()
             if args[1] not in _list:
-                error("No such File or Directory...")
+                error(i18n("file_not_found"))
                 sys.exit(1)
         _dir = os.getcwd() if args[1] == "." else f"{os.getcwd()}\\{args[1]}"
         pname = os.getcwd().split("\\")[-1] if args[1] == "." else args[1]
@@ -34,16 +35,16 @@ def main():
                     _file[name] = pname
                     save_index_file(_file)
                 else:
-                    error("Alias already present. Please use another alias for this template")
+                    error(i18n("existing_alias"))
                     sys.exit(1)
             else:
-                error("An Alias name must be provided")
+                error(i18n("alias_required"))
                 sys.exit(1)
         create_custom_script(_dir)
     elif args[0] == "get":
         verify_consecutive_options(args)
         if len(args) == 1:
-            error("You must provide a template")
+            error(i18n("missing_template"))
             sys.exit(1)
         template = args[1]
         n = None
@@ -59,7 +60,7 @@ def main():
     elif args[0] == "remove":
         verify_consecutive_options(args)
         if len(args) == 1:
-            error("You must provide a template")
+            error(i18n("missing_template"))
             sys.exit(1)
         template = args[1]
         remove_template(template)
@@ -72,16 +73,20 @@ def main():
             if i < len(args):
                 p = args[i]
             else:
-                error("An output directory must be provided")
+                error(i18n("missing_directory"))
+                sys.exit(1)
         if "-d" in args:
             i = args.index("--dir") + 1
             if i < len(args):
                 p = args[i]
             else:
-                error("An output directory must be provided")
+                error(i18n("missing_directory"))
+                sys.exit(1)
         zip_templates(p)
+    elif args[0] == "settings":
+        open_settings()
     else:
-        warning(f"\n\nUsage:\n  ppx <command> [options]\n\nNo such option: {args[0]}")
+        warning(i18n("unknown_option",args[0]))
 
 if __name__ == "__main__":
     main()

@@ -6,6 +6,8 @@ from distutils.file_util import copy_file
 from zipfile import ZipFile
 from platform import system
 import sys
+import subprocess
+from .internationalization import i18n
 
 colors = {
     "DONE": '\033[0;30;42m',
@@ -44,8 +46,18 @@ APPDATA = path.expanduser("~")
 ROOT_STORE = "/AppData/Local" if OS == "Windows" else ""
 TEMPLATE_FOLDER = "PPX_Custom_Scripts" if OS == "Windows" else ".PPX_Custom_Scripts"
 
+def open_settings():
+    _path = f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/settings.json"
+    try:
+        subprocess.Popen(["code", _path], shell=True)
+    except Exception:
+        error("VSCode might not be installed")
+
 def get_index():
     return json.load(open(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/index.json","r"))
+
+def get_settings():
+    return json.load(open(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/settings.json","r"))
 
 def save_index_file(content):
     json.dump(content,open(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/index.json","w"), indent=4, sort_keys=True)
@@ -57,33 +69,39 @@ def check_storage():
         with open(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/index.json","w") as _:
             _.write(json.dumps({}))
             _.close()
-        info("\n\n📁 Created Custom Script folder")
+        with open(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/settings.json","w") as _:
+            _.write(json.dumps({
+                "defaults": {
+                    "translations": ""
+                }
+            }))
+            _.close()
+        success(i18n("custom_folder"))
 
 def create_custom_script(_dir):
     pname = _dir.split("\\")[-1]
     files = [_ for _ in os.listdir(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}") if _ != "index.json"]
     if pname in files:
-        warning("\n\n⚠️ Template already exists")
+        warning(i18n("template_exists"))
         return
     if path.isdir(_dir):
         os.mkdir(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{pname}")
         copy_tree(_dir,f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{pname}")
-        success(f"\n\n✔️ Created template for {pname}")
+        success(i18n("created_template",pname))
     elif path.isfile(_dir):
-        #os.mkdir(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{pname.split('.')[0]}")
         copy_file(_dir,f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{pname}")
-        success(f"\n\n✔️ Created template for {pname}")
+        success(i18n("created_template",pname))
     else:
         error("Unknown error")
 
 def clone_template(pname, cloner):
     files = [_ for _ in os.listdir(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}") if _ != "index.json"]
     if len(files) == 0:
-        info("No templates installed")
+        info(i18n("no_templates"))
         return
     alias = get_index()
     if pname not in files and pname not in alias.keys():
-        error("There appears to be no Template matching that name")
+        error(i18n("no_match"))
         return
     if pname in alias.keys():
         pname = alias[pname]
@@ -100,7 +118,7 @@ def remove_template(pname):
     files = os.listdir(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}")
     alias = get_index()
     if pname not in files and pname not in alias.keys():
-        error("There appears to be no Template matching that name")
+        error(i18n("no_match"))
         return
     if pname in alias.keys():
         pname = alias[pname]
@@ -110,12 +128,12 @@ def remove_template(pname):
         remove_tree(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{pname}")
     elif path.isfile(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{pname}"):
         os.remove(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{pname}")
-    info(f"\n\n✂️ {pname} template deleted successfully")
+    success(i18n("delete",pname))
 
 def list_templates():
     files = [_ for _ in os.listdir(f"{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}") if _ != "index.json"]
     if len(files) == 0:
-        info("\n\n💠 No templates installed")
+        info(i18n("no_templates"))
         return
     alias = get_index()
     keys = [_ for _ in alias.keys()]
@@ -126,7 +144,7 @@ def list_templates():
         if len(keys) > 0:
             if _file in values:
                 i = keys[values.index(_file)]
-        print(f"➡️      {_file}{colors['warning'] +' (File)'+colors['normal'] if path.isfile(f'{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{_file}') else ''}{' ↔️ ' + colors['done']+'Alias:' + colors['normal'] + ' %s' % i if i != None else ''}")
+        print(f"➡️      {_file}{colors['warning'] +' (File)'+colors['normal'] if path.isfile(f'{APPDATA}{ROOT_STORE}/{TEMPLATE_FOLDER}/{_file}') else ''}{' ↔️ ' + colors['done']+'Alias' + colors['normal'] + ': %s' % i if i != None else ''}")
 
 def zip_templates(p):
     if p != "":
@@ -144,23 +162,23 @@ def verify_consecutive_options(arg,i=None):
     if arg[0] in spawn:
         if len(arg) > 1:
             if arg[1].startswith("-"):
-                error("You must not use consecutive commands. Please check 'ppx help' for more information")
+                error(i18n("consecutive_command"))
                 sys.exit(1)
     if i != None:
         if arg[i - 1] in option:
             if i < len(arg):
                 if arg[i].startswith("-"):
-                    error("You must not use consecutive commands. Please check 'ppx help' for more information")
+                    error(i18n("consecutive_command"))
                     sys.exit(1)
 
 def warning(message):
-    print(f"{colors['WARNING']} WARNING {colors['warning']} {message}{colors['normal']}")
+    print(f"{colors['WARNING']} WARNING {colors['warning']} \n\n{message}{colors['normal']}")
 
 def error(message):
-    print(f"{colors['ERROR']} ERROR {colors['error']} {message}{colors['normal']}")
+    print(f"{colors['ERROR']} ERROR {colors['error']} \n\n{message}{colors['normal']}")
 
 def info(message):
-    print(f"{colors['INFO']} INFO {colors['info']} {message}{colors['normal']}")
+    print(f"{colors['INFO']} INFO {colors['info']} \n\n{message}{colors['normal']}")
 
 def success(message):
-    print(f"{colors['DONE']} DONE {colors['done']} {message}{colors['normal']}")
+    print(f"{colors['DONE']} DONE {colors['done']} \n\n{message}{colors['normal']}")
